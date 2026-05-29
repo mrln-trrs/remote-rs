@@ -1,6 +1,6 @@
 <script lang="ts">
   import page from 'page'
-
+  import { Home, Music, Sliders, Monitor } from '@lucide/svelte'
   import type { PageTab } from './data/pages'
 
   let { items, activePath } = $props<{
@@ -8,105 +8,67 @@
     activePath: string
   }>()
 
+  const icons: Record<string, any> = {
+    '/': Home,
+    '/player': Music,
+    '/controls': Sliders,
+    '/system': Monitor
+  }
+
   function goTo(path: string) {
     page.show(path)
   }
 </script>
 
-<nav class="page-tabs" aria-label="Navegación principal">
+<nav class="bottom-nav">
   {#each items as item}
+    {@const Icon = icons[item.path] || Music}
     <button
       type="button"
       class:active={item.path === activePath}
-      class="page-tabs__item"
       onclick={() => goTo(item.path)}
     >
-      <span class="page-tabs__glyph">{item.glyph}</span>
-
-      <span class="page-tabs__copy">
-        <strong>{item.title}</strong>
-        <small>{item.subtitle}</small>
-      </span>
+      <Icon size={24} strokeWidth={item.path === activePath ? 2.5 : 2} />
+      <span>{item.title}</span>
     </button>
   {/each}
 </nav>
 
 <style>
-  .page-tabs {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
-  }
-
-  .page-tabs__item {
-    appearance: none;
-    border: 1px solid var(--border);
-    border-radius: 0;
-    background: transparent;
-    box-shadow: none;
-    min-height: 88px;
-    padding: 14px;
-    display: grid;
-    grid-template-columns: 48px minmax(0, 1fr);
-    gap: 12px;
+  .bottom-nav {
+    display: flex;
+    justify-content: space-around;
     align-items: center;
-    text-align: left;
+    height: 64px;
+    background: rgba(18, 18, 23, 0.95);
+    backdrop-filter: blur(10px);
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  button {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 0.7rem;
+    padding: 8px 12px;
+    transition: color 0.2s;
     cursor: pointer;
-    transition:
-      transform 160ms ease,
-      border-color 160ms ease,
-      box-shadow 160ms ease;
   }
 
-  .page-tabs__item:hover,
-  .page-tabs__item:focus-visible,
-  .page-tabs__item.active {
-    transform: translateY(-2px);
-    border-color: rgba(255, 255, 255, 0.22);
-    box-shadow: none;
+  button.active {
+    color: white;
   }
 
-  .page-tabs__item:focus-visible {
-    outline: 2px solid rgba(69, 215, 255, 0.7);
-    outline-offset: 2px;
+  button :global(svg) {
+    transition: transform 0.2s;
   }
 
-  .page-tabs__glyph {
-    width: 48px;
-    height: 48px;
-    display: grid;
-    place-items: center;
-    border-radius: 0;
-    color: var(--text-strong);
-    background: transparent;
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    box-shadow: none;
-    font-size: 1.15rem;
-  }
-
-  .page-tabs__copy {
-    display: grid;
-    gap: 2px;
-    min-width: 0;
-  }
-
-  .page-tabs__copy strong {
-    color: var(--text-strong);
-  }
-
-  .page-tabs__copy small {
-    color: var(--muted);
-  }
-
-  @media (min-width: 860px) {
-    .page-tabs {
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-    }
-  }
-
-  @media (max-width: 599px) {
-    .page-tabs {
-      grid-template-columns: 1fr;
-    }
+  button:active :global(svg) {
+    transform: scale(0.9);
   }
 </style>

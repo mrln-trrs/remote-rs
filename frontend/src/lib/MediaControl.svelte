@@ -34,26 +34,23 @@
 
 	function handleVolumeInput(event: Event) {
 		const input = event.currentTarget as HTMLInputElement | null
-
-		if (!input) {
-			return
+		if (input) {
+			void updateVolume(Number(input.value))
 		}
+	}
 
-		void updateVolume(Number(input.value))
+	function formatTime(ms: number) {
+		if (!ms || ms < 0) return '0:00'
+		const totalSeconds = Math.floor(ms / 1000)
+		const minutes = Math.floor(totalSeconds / 60)
+		const seconds = totalSeconds % 60
+		return `${minutes}:${seconds.toString().padStart(2, '0')}`
 	}
 </script>
 
-<section class="controls-card surface">
+<section class="controls-card">
 	<div class="controls-card__body">
-		<div class="controls-card__progress">
-			<div class="progress__head">
-				<span>Progreso</span>
-				<strong>{Math.min(($media.duration > 0 ? ($media.progress / $media.duration) * 100 : 0), 100).toFixed(0)}%</strong>
-			</div>
-			<div class="progress__track" aria-hidden="true">
-				<div class="progress__fill" style={`width: ${Math.min(($media.duration > 0 ? ($media.progress / $media.duration) * 100 : 0), 100)}%`}></div>
-			</div>
-		</div>
+		<!-- Progress bar removed as requested, now handled by PlayerPage immersive view -->
 
 		<div class="transport">
 			<button
@@ -67,7 +64,6 @@
 			</button>
 
 			{#each transportButtons as button}
-				{@const Icon = button.id === 'playpause' ? ($media.isPlaying ? Pause : Play) : button.icon}
 				<button
 					type="button"
 					class:transport__button--primary={button.isPrimary}
@@ -76,7 +72,15 @@
 					onclick={() => sendMediaCommand(button.id)}
 					aria-label={button.label}
 				>
-					<Icon size={button.isPrimary ? 30 : 22} strokeWidth={2.2} />
+					{#if button.id === 'playpause'}
+						{#if $media.isPlaying}
+							<Pause size={30} strokeWidth={2.2} />
+						{:else}
+							<Play size={30} strokeWidth={2.2} />
+						{/if}
+					{:else}
+						<button.icon size={22} strokeWidth={2.2} />
+					{/if}
 				</button>
 			{/each}
 
@@ -115,40 +119,15 @@
 <style>
 	.controls-card {
 		min-height: 0;
-		padding: clamp(0.8rem, 2vw, 1rem);
+		padding: 0;
 		display: grid;
 		gap: clamp(10px, 2vw, 14px);
 	}
 
 	.controls-card__body {
 		display: grid;
-		gap: clamp(10px, 2vw, 14px);
+		gap: clamp(20px, 4vw, 32px);
 		min-height: 0;
-	}
-
-	.controls-card__progress {
-		display: grid;
-		gap: 0.55rem;
-	}
-
-	.progress__head {
-		display: flex;
-		justify-content: space-between;
-		gap: 12px;
-		align-items: center;
-		color: var(--text-strong);
-	}
-
-	.progress__track {
-		height: 0.6rem;
-		border: 1px solid rgba(255, 255, 255, 0.12);
-		background: rgba(255, 255, 255, 0.05);
-		overflow: hidden;
-	}
-
-	.progress__fill {
-		height: 100%;
-		background: linear-gradient(90deg, var(--accent), var(--accent-2));
 	}
 
 	.transport {
@@ -203,8 +182,12 @@
 		width: clamp(4.4rem, 18vw, 5.4rem);
 		height: clamp(4.4rem, 18vw, 5.4rem);
 		border-radius: 50%;
-		background: rgba(0, 0, 0, 0.9);
+		background: rgba(255, 255, 255, 0.9);
 		box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12), 0 14px 30px rgba(0, 0, 0, 0.24);
+	}
+
+	.transport__button--primary :global(svg) {
+		color: black;
 	}
 
 	.transport__button--playing {

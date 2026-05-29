@@ -81,10 +81,9 @@ function writeSnapshotCache(snapshot: MediaSnapshot) {
   }
 }
 
-media.set(readSnapshotCache())
+media.set(defaultMedia)
 
 function applySnapshot(snapshot: MediaSnapshot) {
-  writeSnapshotCache(snapshot)
   media.set(snapshot)
 }
 
@@ -215,7 +214,6 @@ export async function sendMediaCommand(command: string) {
     }
 
     await sendControlCommand(command)
-    void refreshMedia()
   } catch (error) {
     console.error('Failed to send media command', error)
   }
@@ -223,8 +221,9 @@ export async function sendMediaCommand(command: string) {
 
 export async function updateVolume(level: number) {
   try {
+    // Optimistic UI: Update local state immediately
+    media.update(m => ({ ...m, volume: level }));
     await setVolume(level)
-    void refreshMedia()
   } catch (error) {
     console.error('Failed to update volume', error)
   }
@@ -285,6 +284,16 @@ function connectLiveSocket() {
   if (typeof window === 'undefined') {
     return
   }
+
+  // Local timer to smooth out progress updates
+  setInterval(() => {
+    media.update(m => {
+      if (m.isPlaying && m.progress < m.duration) {
+        return { ...m, progress: m.progress + 1000 };
+      }
+      return m;
+    });
+  }, 1000);
 
   try {
     const socket = new WebSocket(getBackendWsUrl('/ws'))

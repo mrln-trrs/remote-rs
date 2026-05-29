@@ -4,6 +4,9 @@ const mediaCache = new Map<string, MediaPayload | undefined>()
 const pendingRequests = new Map<string, Promise<unknown>>()
 
 function getBackendUrl() {
+  if (typeof window !== 'undefined') {
+    return `http://${window.location.hostname}:3000`
+  }
   const envUrl = import.meta.env.VITE_REMOTE_RS_API_URL
   return typeof envUrl === 'string' && envUrl.trim() ? envUrl.replace(/\/$/, '') : defaultBackendUrl
 }
@@ -20,51 +23,20 @@ export function getBackendWsUrl(path: string) {
 }
 
 async function requestJson<T>(path: string, init?: RequestInit) {
-  if (init?.method === undefined || init.method === 'GET') {
-    const cachedResponse = mediaCache.get(path)
-
-    if (cachedResponse !== undefined) {
-      return cachedResponse as T
-    }
-
-    const pendingRequest = pendingRequests.get(path)
-
-    if (pendingRequest) {
-      return pendingRequest as Promise<T>
-    }
-  }
-
   const requestPromise = (async () => {
-  const response = await fetch(`${getBackendUrl()}${path}`, init)
-
-  if (!response.ok) {
-    throw new Error(`Request failed for ${path}: ${response.status}`)
-  }
-
-  if (response.status === 204) {
-    return undefined as T
-  }
-
-  const body = await response.text()
-
-  if (!body.trim()) {
-    return undefined as T
-  }
-
-  return JSON.parse(body) as T
-  })()
-
-  if (init?.method === undefined || init.method === 'GET') {
-    pendingRequests.set(path, requestPromise)
-
-    try {
-      const result = await requestPromise
-      mediaCache.set(path, result as MediaPayload | undefined)
-      return result
-    } finally {
-      pendingRequests.delete(path)
+    const response = await fetch(`${getBackendUrl()}${path}`, init)
+    if (!response.ok) {
+      throw new Error(`Request failed for ${path}: ${response.status}`)
     }
-  }
+    if (response.status === 204) {
+      return undefined as T
+    }
+    const body = await response.text()
+    if (!body.trim()) {
+      return undefined as T
+    }
+    return JSON.parse(body) as T
+  })()
 
   return requestPromise
 }
