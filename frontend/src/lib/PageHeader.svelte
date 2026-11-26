@@ -1,12 +1,12 @@
 <script lang="ts">
   import { goTo } from './stores/router'
 
-  let { eyebrow, title, text, backPath = '/' } = $props<{
+  let { eyebrow, title, text, backPath = '/' }: {
     eyebrow: string
     title: string
     text?: string
     backPath?: string
-  }>()
+  } = $props()
 </script>
 
 <header class="page-header">

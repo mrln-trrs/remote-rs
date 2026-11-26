@@ -3,10 +3,10 @@
   import { Home, Music, Sliders, Monitor } from '@lucide/svelte'
   import type { PageTab } from './data/pages'
 
-  let { items, activePath } = $props<{
+  let { items, activePath }: {
     items: PageTab[]
     activePath: string
-  }>()
+  } = $props()
 
   const icons: Record<string, any> = {
     '/': Home,

@@ -1,10 +1,10 @@
 <script lang="ts">
   import type { LauncherItem } from './data/launcher'
 
-  let { items, onSelect } = $props<{
+  let { items, onSelect }: {
     items: LauncherItem[]
     onSelect: (item: LauncherItem) => void
-  }>()
+  } = $props()
 </script>
 
 <div class="launcher-grid">

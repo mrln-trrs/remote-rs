@@ -8,7 +8,7 @@
     kind: 'current' | 'next'
   }
 
-  let { activeQueue = [] } = $props<{ activeQueue?: QueueItem[] }>()
+  let { activeQueue = [] }: { activeQueue?: QueueItem[] } = $props()
 
   const currentTrack = $derived({
     title: $media.title,
