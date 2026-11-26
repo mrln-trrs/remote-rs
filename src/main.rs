@@ -4,11 +4,12 @@ use axum::{
     routing::{get, post},
     Router, Json, extract::Path,
     extract::ws::{WebSocket, WebSocketUpgrade, Message},
+    http::{HeaderMap, HeaderValue, Method, StatusCode, header},
 };
 use futures_util::{SinkExt, StreamExt};
 use std::net::SocketAddr;
 use tokio::sync::broadcast;
-use tower_http::cors::CorsLayer;
+use tower_http::cors::{AllowOrigin, CorsLayer};
 use windows::Win32::System::Com::{CoInitializeEx, COINIT_MULTITHREADED};
 use crate::modules::media::{metadata, controls};
 use crate::modules::volume;
@@ -64,9 +65,19 @@ async fn main() {
         .route("/api/search/youtube", get(api_search_youtube))
         .route("/api/launch/youtube/play/{id}", post(api_play_youtube_video))
         .route("/api/terminal/exec", post(api_terminal_exec))
-        .layer(CorsLayer::permissive());
+        .layer(cors_layer());
 
-    let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
+    // Por defecto solo escucha en el propio equipo. Para usarlo desde el celular
+    // hay que indicar la interfaz de red de forma explícita (ver README).
+    let addr: SocketAddr = std::env::var("REMOTE_RS_BIND")
+        .ok()
+        .and_then(|v| v.trim().parse().ok())
+        .unwrap_or_else(|| SocketAddr::from(([127, 0, 0, 1], 3000)));
+    if terminal_token().is_some() {
+        println!("Terminal remota ACTIVADA (protegida con REMOTE_RS_TERMINAL_TOKEN)");
+    } else {
+        println!("Terminal remota desactivada (defina REMOTE_RS_TERMINAL_TOKEN para activarla)");
+    }
     println!("Server running at http://{}", addr);
     let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
     axum::serve(listener, app).await.unwrap();
@@ -165,10 +176,50 @@ async fn api_play_youtube_video(Path(id): Path<String>) {
     modules::launcher::youtube::play_video(&id);
 }
 
-async fn api_terminal_exec(Json(payload): Json<serde_json::Value>) -> String {
+/// CORS restringido: solo los orígenes de `REMOTE_RS_ALLOWED_ORIGINS`
+/// (separados por comas) o, si no se define, el frontend local en el puerto 5173.
+fn cors_layer() -> CorsLayer {
+    let origins: Vec<HeaderValue> = std::env::var("REMOTE_RS_ALLOWED_ORIGINS")
+        .unwrap_or_else(|_| "http://localhost:5173,http://127.0.0.1:5173".to_string())
+        .split(',')
+        .filter_map(|o| HeaderValue::from_str(o.trim()).ok())
+        .collect();
+    CorsLayer::new()
+        .allow_origin(AllowOrigin::list(origins))
+        .allow_methods([Method::GET, Method::POST])
+        .allow_headers([header::CONTENT_TYPE, header::HeaderName::from_static("x-remote-token")])
+}
+
+/// Token de la terminal remota. Sin token (o vacío) la terminal queda desactivada.
+fn terminal_token() -> Option<String> {
+    std::env::var("REMOTE_RS_TERMINAL_TOKEN")
+        .ok()
+        .map(|t| t.trim().to_string())
+        .filter(|t| !t.is_empty())
+}
+
+/// Comparación en tiempo constante para no filtrar el token por tiempos de respuesta.
+fn constant_time_eq(a: &[u8], b: &[u8]) -> bool {
+    if a.len() != b.len() {
+        return false;
+    }
+    a.iter().zip(b).fold(0u8, |acc, (x, y)| acc | (x ^ y)) == 0
+}
+
+async fn api_terminal_exec(headers: HeaderMap, Json(payload): Json<serde_json::Value>) -> (StatusCode, String) {
+    let Some(expected) = terminal_token() else {
+        return (StatusCode::FORBIDDEN, "Terminal remota desactivada".to_string());
+    };
+    let provided = headers
+        .get("x-remote-token")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+    if !constant_time_eq(provided.as_bytes(), expected.as_bytes()) {
+        return (StatusCode::UNAUTHORIZED, "Token no válido".to_string());
+    }
     if let Some(cmd) = payload["command"].as_str() {
-        modules::terminal::execute_single_command(cmd)
+        (StatusCode::OK, modules::terminal::execute_single_command(cmd))
     } else {
-        "No command provided".to_string()
+        (StatusCode::BAD_REQUEST, "No command provided".to_string())
     }
 }
