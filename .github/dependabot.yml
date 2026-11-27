@@ -10,3 +10,7 @@ updates:
     schedule:
       interval: "monthly"
     open-pull-requests-limit: 5
+    ignore:
+      # TypeScript 7 (compilador nativo) rompe svelte-check 4; esperar soporte.
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
