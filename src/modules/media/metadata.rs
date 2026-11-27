@@ -30,23 +30,23 @@ pub async fn get_current_media() -> MediaMetadata {
     let mut meta = MediaMetadata::default();
 
     if let Ok(op) = GlobalSystemMediaTransportControlsSessionManager::RequestAsync() {
-        if let Ok(manager) = op.get() {
+        if let Ok(manager) = op.join() {
             if let Ok(session) = manager.GetCurrentSession() {
                 // Get Media Properties
                 if let Ok(props_op) = session.TryGetMediaPropertiesAsync() {
-                    if let Ok(props) = props_op.get() {
+                    if let Ok(props) = props_op.join() {
                         meta.title = props.Title().unwrap_or_default().to_string();
                         meta.artist = props.Artist().unwrap_or_default().to_string();
 
                         // Try to get Thumbnail
                         if let Ok(thumb_ref) = props.Thumbnail() {
                             if let Ok(stream_op) = thumb_ref.OpenReadAsync() {
-                                if let Ok(stream) = stream_op.get() {
+                                if let Ok(stream) = stream_op.join() {
                                     if let Ok(size) = stream.Size() {
                                         if size > 0 {
                                             if let Ok(reader) = DataReader::CreateDataReader(&stream) {
                                                 if let Ok(load_op) = reader.LoadAsync(size as u32) {
-                                                    if load_op.get().is_ok() {
+                                                    if load_op.join().is_ok() {
                                                         let mut buffer = vec![0u8; size as usize];
                                                         if reader.ReadBytes(&mut buffer).is_ok() {
                                                             meta.thumbnail = Some(general_purpose::STANDARD.encode(buffer));
